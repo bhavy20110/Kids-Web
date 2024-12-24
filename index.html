@@ -1,47 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Prime Video</title>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body {
-            margin: 0px;
-        }
+      const video = document.getElementById('player');
+      const videoSrc = "https://amit.allinonereborn.in/jiobe.m3u8?id=1091&headers=%7B%22referer%22%3A%22https%3A%2F%2F9anime.pl%22%7D";
 
-        .jwplayer {
-            position: absolute !important;
-        }
-
-        .jwplayer.jw-flag-aspect-mode {
-            min-height: 100%;
-            max-height: 100%;
-        }
-    </style>
-</head>
-    <script type='text/javascript' src='//eltontry.com/09/f1/e9/09f1e956c711aea6a898d5abbb78d092.js'></script>
-<body>
-    <div id="jwplayerDiv"></div>
-    <script src="//content.jwplatform.com/libraries/SAHhwvZq.js"></script>
-    <script type="text/javascript">
-        // Use the PHP configuration directly within the JavaScript
-        var config = {"file":"http://starshare.live:8080/live/7382837374/5003958588/18456.m3u8",
-
-        jwplayer("jwplayerDiv").setup({
-            file: config.file,
-            position: 'bottom',
-            autostart: true,
-            stretching: "",
-            width: "100%",
-            type: "dash",
-            drm: {
-                clearkey: {
-                    keyId: config.drm.clearkey.keyId,
-                    key: config.drm.clearkey.key
-                }
-            }
+      // Initialize HLS.js if supported
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          liveSyncDurationCount: 3, // Sync live playback with last 3 chunks
+          maxLiveSyncPlaybackRate: 1, // Normal playback speed (no faster playback)
+          lowLatencyMode: true, // Enable low latency mode
+          maxBufferSize: 30 * 1024 * 1024, // Max buffer size set to 30MB
+          maxBufferLength: 10, // Max buffer length (10 seconds)
+          startFragPrefetch: true, // Prefetch next chunk before current one ends
+          backBufferLength: 15, // Retain some backbuffer to smooth playback
+          enableWorker: true, // Use web workers for better performance
         });
-    </script>
+
+        hls.loadSource(videoSrc);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          console.log("Manifest loaded. Starting playback.");
+          video.play();
+        });
+
+        hls.on(Hls.Events.BUFFER_APPENDING, () => {
+          console.log("Appending new chunk to buffer.");
+        });
+       hls.on(Hls.Events.ERROR, (event, data) => {
+          console.error("HLS.js Error:", data.type, data);
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                console.log("Network error. Retrying...");
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                console.log("Media error. Attempting recovery...");
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                console.log("Unrecoverable error. Reloading...");
+                window.location.reload();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = videoSrc;
+      } else {
+        console.error("HLS not supported on this browser.");
+      }
+
+      // Initialize Plyr
+      const player = new Plyr(video, {
+        controls: ['play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+        autoplay: true
+      });
+
+      player.on('ready', () => {
+        console.log("Plyr is ready.");
+      });
+    });
+  </script>
 </body>
-</html>
+</html>       
