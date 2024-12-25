@@ -27,7 +27,7 @@
       text-align: center;
     }
     h1 {
-      color: #ff9f43;
+      color: #4e92d1;
     }
     input, select, button {
       width: 80%;
@@ -47,13 +47,13 @@
       color: #fff;
     }
     button {
-      background: #ff9f43;
+      background: #4e92d1;
       color: #fff;
       cursor: pointer;
       transition: 0.3s;
     }
     button:hover {
-      background: #ffa85c;
+      background: #3b7fa8;
     }
     .player-container {
       margin-top: 20px;
@@ -124,25 +124,45 @@
         document.getElementById('jwplayer-container').classList.add('hidden');
         document.getElementById('shaka-player').classList.add('hidden');
 
+        console.log(`Selected Player: ${selectedPlayer}`);
+        console.log(`Full Stream URL: ${fullUrl}`);
+
         if (selectedPlayer === 'videojs') {
           document.getElementById('plyr-player').classList.remove('hidden');
           videojsPlayer.src({ src: fullUrl, type: 'application/x-mpegURL' });
-          videojsPlayer.play();
+          videojsPlayer.play().catch(err => {
+            console.error('Video.js Error:', err);
+            errorMessage.textContent = 'Failed to load the stream with Video.js.';
+            errorMessage.style.display = 'block';
+          });
         } else if (selectedPlayer === 'plyr') {
           document.getElementById('plyr-player').classList.remove('hidden');
           plyrPlayer.source = { type: 'video', sources: [{ src: fullUrl, type: 'application/x-mpegURL' }] };
-          plyrPlayer.play();
+          plyrPlayer.play().catch(err => {
+            console.error('Plyr.io Error:', err);
+            errorMessage.textContent = 'Failed to load the stream with Plyr.io.';
+            errorMessage.style.display = 'block';
+          });
         } else if (selectedPlayer === 'jwplayer') {
           document.getElementById('jwplayer-container').classList.remove('hidden');
           jwPlayer.load([{ file: fullUrl }]);
-          jwPlayer.play();
+          jwPlayer.play().catch(err => {
+            console.error('JW Player Error:', err);
+            errorMessage.textContent = 'Failed to load the stream with JW Player.';
+            errorMessage.style.display = 'block';
+          });
         } else if (selectedPlayer === 'shaka') {
           document.getElementById('shaka-player').classList.remove('hidden');
           shakaPlayer.load(fullUrl).then(() => {
             const videoElement = document.getElementById('shaka-player');
             videoElement.play();
-          }).catch(console.error);
+          }).catch(err => {
+            console.error('Shaka Player Error:', err);
+            errorMessage.textContent = 'Failed to load the stream with Shaka Player.';
+            errorMessage.style.display = 'block';
+          });
         }
+
         stopButton.classList.remove('hidden');
       };
 
