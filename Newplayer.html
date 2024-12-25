@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate Multi-Player HLS Player</title>
+  <!-- Plyr.io CSS -->
+  <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
+  <!-- Video.js CSS -->
+  <link href="https://vjs.zencdn.net/8.3.0/video-js.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background: #1e1e2f;
+      color: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #2c2c3a;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    h1 {
+      color: #ff9f43;
+    }
+    input, select, button {
+      width: 80%;
+      padding: 10px;
+      margin: 10px 0;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      outline: none;
+    }
+    input {
+      background: #3d3d4e;
+      color: #fff;
+    }
+    select {
+      background: #3d3d4e;
+      color: #fff;
+    }
+    button {
+      background: #ff9f43;
+      color: #fff;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    button:hover {
+      background: #ffa85c;
+    }
+    .player-container {
+      margin-top: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Ultimate Multi-Player HLS Player</h1>
+    <p>Enter your <strong>m3u8</strong> URL and select a player:</p>
+    <input id="m3u8-url" type="text" placeholder="Enter m3u8 URL (e.g., https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8)">
+    <select id="player-select">
+      <option value="plyr">Plyr.io</option>
+      <option value="videojs">Video.js</option>
+      <option value="jwplayer">JW Player</option>
+      <option value="shaka">Shaka Player</option>
+    </select>
+    <button id="load-btn">Load Stream</button>
+    <button id="stop-btn" class="hidden">Stop Stream</button>
+
+    <div class="player-container" id="player-container">
+      <video id="plyr-player" class="video-js vjs-default-skin hidden" controls playsinline></video>
+      <div id="jwplayer-container" class="hidden"></div>
+      <video id="shaka-player" class="hidden" controls></video>
+    </div>
+    <p id="error-message" style="color: #ff6b6b; display: none;"></p>
+  </div>
+
+  <!-- Video.js Library -->
+  <script src="https://vjs.zencdn.net/8.3.0/video.min.js"></script>
+  <!-- Plyr.io Library -->
+  <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.min.js"></script>
+  <!-- JW Player -->
+  <script src="https://cdn.jwplayer.com/libraries/IDzF9Zmk.js"></script>
+  <!-- Shaka Player -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.2/shaka-player.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const videojsPlayer = videojs('plyr-player', { responsive: true, fluid: true });
+      const plyrPlayer = new Plyr('#plyr-player', { controls: ['play', 'progress', 'current-time', 'volume', 'fullscreen', 'settings'] });
+      const jwPlayer = jwplayer('jwplayer-container').setup({ width: '100%', aspectratio: '16:9' });
+      const shakaPlayer = new shaka.Player(document.getElementById('shaka-player'));
+      const stopButton = document.getElementById('stop-btn');
+      const errorMessage = document.getElementById('error-message');
+
+      const loadPlayer = () => {
+        const selectedPlayer = document.getElementById('player-select').value;
+        const m3u8Url = document.getElementById('m3u8-url').value.trim();
+
+        if (!m3u8Url) {
+          errorMessage.textContent = 'Please enter a valid m3u8 URL.';
+          errorMessage.style.display = 'block';
+          return;
+        }
+
+        errorMessage.style.display = 'none';
+
+        const proxyUrl = "https://m3u8-proxy-with-cors.vercel.app/m3u8-proxy";
+        const fullUrl = `${proxyUrl}?url=${encodeURIComponent(m3u8Url)}&headers=${encodeURIComponent(JSON.stringify({ referer: '' }))}`;
+
+        stopPlayer();
+
+        document.getElementById('plyr-player').classList.add('hidden');
+        document.getElementById('jwplayer-container').classList.add('hidden');
+        document.getElementById('shaka-player').classList.add('hidden');
+
+        if (selectedPlayer === 'videojs') {
+          document.getElementById('plyr-player').classList.remove('hidden');
+          videojsPlayer.src({ src: fullUrl, type: 'application/x-mpegURL' });
+          videojsPlayer.play();
+        } else if (selectedPlayer === 'plyr') {
+          document.getElementById('plyr-player').classList.remove('hidden');
+          plyrPlayer.source = { type: 'video', sources: [{ src: fullUrl, type: 'application/x-mpegURL' }] };
+          plyrPlayer.play();
+        } else if (selectedPlayer === 'jwplayer') {
+          document.getElementById('jwplayer-container').classList.remove('hidden');
+          jwPlayer.load([{ file: fullUrl }]);
+          jwPlayer.play();
+        } else if (selectedPlayer === 'shaka') {
+          document.getElementById('shaka-player').classList.remove('hidden');
+          shakaPlayer.load(fullUrl).then(() => {
+            const videoElement = document.getElementById('shaka-player');
+            videoElement.play();
+          }).catch(console.error);
+        }
+        stopButton.classList.remove('hidden');
+      };
+
+      const stopPlayer = () => {
+        videojsPlayer.pause();
+        plyrPlayer.pause();
+        jwPlayer.stop();
+        shakaPlayer.unload().catch(() => {});
+        stopButton.classList.add('hidden');
+      };
+
+      document.getElementById('load-btn').addEventListener('click', loadPlayer);
+      stopButton.addEventListener('click', stopPlayer);
+    });
+  </script>
+</body>
+</html>
